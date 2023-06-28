@@ -8,7 +8,10 @@ urlpatterns = [
     path('sessions/<str:pk>/', views.SessionDetail.as_view()),
     path('mySessions/', views.DeanSessions.as_view()),
     path('students/', views.Students.as_view()),
-    path('deans/', views.Dean.as_view()),
+    path('students/<str:pk>/', views.StudentDetail.as_view()),
+    path('deans/', views.DeanList.as_view()),
+    path('deans/<str:pk>/', views.DeanDetail.as_view()),
+
 
 ]
 

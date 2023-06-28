@@ -43,7 +43,7 @@ class Student(models.Model):
 
 class Session(models.Model):
     time = models.DateTimeField()
-    available = models.BooleanField()
+    available = models.BooleanField(default=True)
     dean = models.ForeignKey(Dean, on_delete=models.CASCADE)
     student = models.ForeignKey(
         Student, on_delete=models.CASCADE, null=True, blank=True)

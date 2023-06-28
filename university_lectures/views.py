@@ -8,6 +8,7 @@ from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
 from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication, TokenAuthentication
+from datetime import date, timedelta
 # Create your views here.
 
 
@@ -17,7 +18,7 @@ class AvailableSessions(generics.ListCreateAPIView):
     """
     authentication_classes = (SessionAuthentication,
                               BasicAuthentication, TokenAuthentication)
-    queryset = Session.objects.all().order_by('time')
+    queryset = Session.objects.filter(available=True)
     serializer_class = SessionSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -59,7 +60,18 @@ class Students(generics.ListCreateAPIView):
             return Response({"status": "Error", "data": serializer.errors})
 
 
-class Dean(generics.ListCreateAPIView):
+class StudentDetail(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Retrieve, update or delete a student record.
+    """
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    authentication_classes = (SessionAuthentication,
+                              BasicAuthentication, TokenAuthentication)
+    queryset = Student.objects.all().order_by('id')
+    serializer_class = StudentSerializer
+
+
+class DeanList(generics.ListCreateAPIView):
     """
     List all available deans.
     """
@@ -83,6 +95,17 @@ class Dean(generics.ListCreateAPIView):
             return Response({"status": "Error", "data": serializer.errors})
 
 
+class DeanDetail(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Retrieve, update or delete a dean record.
+    """
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    authentication_classes = (SessionAuthentication,
+                              BasicAuthentication, TokenAuthentication)
+    queryset = Dean.objects.all()
+    serializer_class = DeanSerializer
+
+
 class SessionDetail(generics.RetrieveUpdateDestroyAPIView):
     """
     Retrieve, update or delete a session record.
@@ -94,23 +117,40 @@ class SessionDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = SessionSerializer
 
 
-class DeanSessions(generics.ListAPIView):
+class DeanSessions(generics.ListCreateAPIView):
     """
     List all available sessions, or book a new session.
     """
     authentication_classes = (SessionAuthentication,
                               BasicAuthentication, TokenAuthentication)
-    queryset = Session.objects.all().order_by('time')
-    serializer_class = SessionSerializer
     permission_classes = [permissions.IsAuthenticated]
+    queryset = Session.objects.all()
+    serializer_class = SessionSerializer
 
-    def get_queryset(self):
+    def list(self, request):
         """
         Return a list of all the sessions
         for the currently authenticated user.
         """
-        user = self.request.user
-        return Session.objects.filter(dean=user)
+        try:
+            user = self.request.user
+            dean = Dean.objects.get(id=user)
+            startdate = date.today()
+            enddate = startdate + timedelta(days=7)
+            queryset = Session.objects.filter(
+                time__range=[startdate, enddate], dean=dean, available=False)
+            serializer = SessionSerializer(queryset, many=True)
+            return Response(serializer.data)
+        except:
+            return Response({"message": "User doesn't have permission"})
+
+    # def get_queryset(self):
+    #     """
+    #     Return a list of all the sessions
+    #     for the currently authenticated user.
+    #     """
+    #
+    #
 
 
 class CustomAuthToken(ObtainAuthToken):
@@ -122,6 +162,5 @@ class CustomAuthToken(ObtainAuthToken):
         token, created = Token.objects.get_or_create(user=user)
         return Response({
             'token': token.key,
-            'user_id': user.pk,
-            'email': user.email
+            'db_identifier': user.pk,
         })
